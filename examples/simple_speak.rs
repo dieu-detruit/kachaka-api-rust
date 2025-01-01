@@ -7,7 +7,7 @@ async fn main() {
         .unwrap();
     let response = client
         .speak(
-            "こんにちは",
+            "こんにちは、私の名前はなんだと思いますか？当ててみてください",
             StartCommandOptions::default()
                 .title("こんにちは")
                 .tts_on_success("こんにちは")
@@ -15,5 +15,11 @@ async fn main() {
         )
         .await
         .unwrap();
+    println!("{:?}", response);
+
+    // sleep 1 second
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+
+    let response = client.cancel_command().await.unwrap();
     println!("{:?}", response);
 }
