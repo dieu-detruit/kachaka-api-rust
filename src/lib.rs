@@ -38,6 +38,15 @@ fn parse_rpc_response_with_result<T>(
     }
 }
 
+fn parse_getter_response<T>(
+    maybe_response: std::result::Result<tonic::Response<T>, tonic::Status>,
+) -> Result<T, KachakaApiError> {
+    match maybe_response {
+        Ok(response) => Ok(response.into_inner()),
+        Err(e) => Err(KachakaApiError::CommunicationError(e)),
+    }
+}
+
 impl KachakaApiClient {
     pub async fn connect<D>(target: D) -> Result<Self, tonic::transport::Error>
     where
@@ -46,6 +55,25 @@ impl KachakaApiClient {
     {
         let client = TonicKachakaApiClient::connect(target).await?;
         Ok(Self { client })
+    }
+
+    pub async fn get_robot_serial_number(
+        &mut self,
+        cursor: i64,
+    ) -> Result<String, KachakaApiError> {
+        let request = tonic::Request::new(kachaka_api::GetRequest {
+            metadata: Some(kachaka_api::Metadata { cursor }),
+        });
+        let response = self.client.get_robot_serial_number(request).await;
+        parse_getter_response(response).map(|response| response.serial_number)
+    }
+
+    pub async fn get_robot_version(&mut self, cursor: i64) -> Result<String, KachakaApiError> {
+        let request = tonic::Request::new(kachaka_api::GetRequest {
+            metadata: Some(kachaka_api::Metadata { cursor }),
+        });
+        let response = self.client.get_robot_version(request).await;
+        parse_getter_response(response).map(|response| response.version)
     }
 
     async fn start_command(
