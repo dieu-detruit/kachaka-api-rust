@@ -92,13 +92,11 @@ impl KachakaApiClient {
             tts_on_success: options.tts_on_success,
         });
         let response = self.client.start_command(request).await;
-        match parse_rpc_response_with_result(
+        parse_rpc_response_with_result(
             response,
             |rpc_response: &kachaka_api::StartCommandResponse| rpc_response.result,
-        ) {
-            Ok(response) => Ok(response.command_id),
-            Err(e) => Err(e),
-        }
+        )
+        .map(|response| response.command_id)
     }
 
     pub async fn move_shelf(
@@ -276,24 +274,19 @@ impl KachakaApiClient {
     pub async fn cancel_command(&mut self) -> Result<(), KachakaApiError> {
         let request = tonic::Request::new(kachaka_api::EmptyRequest {});
         let response = self.client.cancel_command(request).await;
-        match parse_rpc_response_with_result(
+        parse_rpc_response_with_result(
             response,
             |rpc_response: &kachaka_api::CancelCommandResponse| rpc_response.result,
-        ) {
-            Ok(_response) => Ok(()),
-            Err(e) => Err(e),
-        }
+        )
+        .map(|_response| ())
     }
 
     pub async fn proceed(&mut self) -> Result<(), KachakaApiError> {
         let request = tonic::Request::new(kachaka_api::EmptyRequest {});
         let response = self.client.proceed(request).await;
-        match parse_rpc_response_with_result(
-            response,
-            |rpc_response: &kachaka_api::ProceedResponse| rpc_response.result,
-        ) {
-            Ok(_response) => Ok(()),
-            Err(e) => Err(e),
-        }
+        parse_rpc_response_with_result(response, |rpc_response: &kachaka_api::ProceedResponse| {
+            rpc_response.result
+        })
+        .map(|_response| ())
     }
 }
