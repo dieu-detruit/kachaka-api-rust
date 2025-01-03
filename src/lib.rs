@@ -29,6 +29,7 @@ impl KachakaApiClient {
     }
 
     // getter api
+    // GetRobotSerialNumber
     pub async fn get_robot_serial_number(
         &mut self,
         cursor: i64,
@@ -36,18 +37,60 @@ impl KachakaApiClient {
         api_impl::get_robot_serial_number(&mut self.client, cursor).await
     }
 
+    pub async fn get_latest_robot_serial_number(&mut self) -> Result<String, KachakaApiError> {
+        api_impl::get_latest_robot_serial_number(&mut self.client).await
+    }
+
+    pub async fn watch_robot_serial_number(
+        &mut self,
+    ) -> impl Stream<Item = Result<String, KachakaApiError>> {
+        api_impl::watch_robot_serial_number(&mut self.client).await
+    }
+
+    // GetRobotVersion
     pub async fn get_robot_version(&mut self, cursor: i64) -> Result<String, KachakaApiError> {
         api_impl::get_robot_version(&mut self.client, cursor).await
     }
 
+    pub async fn get_latest_robot_version(&mut self) -> Result<String, KachakaApiError> {
+        api_impl::get_latest_robot_version(&mut self.client).await
+    }
+
+    pub async fn watch_robot_version(
+        &mut self,
+    ) -> impl Stream<Item = Result<String, KachakaApiError>> {
+        api_impl::watch_robot_version(&mut self.client).await
+    }
+
+    // GetRobotPose
     pub async fn get_robot_pose(&mut self, cursor: i64) -> Result<Pose, KachakaApiError> {
         api_impl::get_robot_pose(&mut self.client, cursor).await
     }
 
+    pub async fn get_latest_robot_pose(&mut self) -> Result<Pose, KachakaApiError> {
+        api_impl::get_latest_robot_pose(&mut self.client).await
+    }
+
+    pub async fn watch_robot_pose(&mut self) -> impl Stream<Item = Result<Pose, KachakaApiError>> {
+        api_impl::watch_robot_pose(&mut self.client).await
+    }
+
+    // GetBatteryInfo
     pub async fn get_battery_info(&mut self, cursor: i64) -> Result<BatteryInfo, KachakaApiError> {
         api_impl::get_battery_info(&mut self.client, cursor).await
     }
 
+    pub async fn get_latest_battery_info(&mut self) -> Result<BatteryInfo, KachakaApiError> {
+        api_impl::get_latest_battery_info(&mut self.client).await
+    }
+
+    pub async fn watch_battery_info(
+        &mut self,
+    ) -> impl Stream<Item = Result<BatteryInfo, KachakaApiError>> {
+        api_impl::watch_battery_info(&mut self.client).await
+    }
+
+    // GetCommandState
     pub async fn get_command_state(
         &mut self,
         cursor: i64,
@@ -55,6 +98,17 @@ impl KachakaApiClient {
         api_impl::get_command_state(&mut self.client, cursor).await
     }
 
+    pub async fn get_latest_command_state(&mut self) -> Result<CommandState, KachakaApiError> {
+        api_impl::get_latest_command_state(&mut self.client).await
+    }
+
+    pub async fn watch_command_state(
+        &mut self,
+    ) -> impl Stream<Item = Result<CommandState, KachakaApiError>> {
+        api_impl::watch_command_state(&mut self.client).await
+    }
+
+    // GetLastCommandResult
     pub async fn get_last_command_result(
         &mut self,
         cursor: i64,

@@ -39,69 +39,269 @@ fn parse_getter_response<T>(
 }
 
 // getter api
-pub async fn get_robot_serial_number(
+
+// GetRobotSerialNumber
+async fn get_robot_serial_number_with_cursor(
     client: &mut TonicKachakaApiClient<Channel>,
     cursor: i64,
-) -> Result<String, KachakaApiError> {
+) -> Result<(i64, String), KachakaApiError> {
     let request = tonic::Request::new(kachaka_api::GetRequest {
         metadata: Some(kachaka_api::Metadata { cursor }),
     });
     let response = client.get_robot_serial_number(request).await;
-    parse_getter_response(response).map(|response| response.serial_number)
+    parse_getter_response(response)
+        .map(|response| (response.metadata.unwrap().cursor, response.serial_number))
+}
+
+pub async fn get_robot_serial_number(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<String, KachakaApiError> {
+    get_robot_serial_number_with_cursor(client, cursor)
+        .await
+        .map(|(_, serial_number)| serial_number)
+}
+
+pub async fn get_latest_robot_serial_number(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<String, KachakaApiError> {
+    get_robot_serial_number(client, 0).await
+}
+
+pub async fn watch_robot_serial_number(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> impl Stream<Item = Result<String, KachakaApiError>> {
+    let (tx, rx) = mpsc::unbounded_channel::<Result<String, KachakaApiError>>();
+    let mut cursor = 0;
+    let mut client_clone = client.clone();
+    tokio::spawn(async move {
+        loop {
+            match get_robot_serial_number_with_cursor(&mut client_clone, cursor).await {
+                Ok((new_cursor, serial_number)) => {
+                    cursor = new_cursor;
+                    tx.send(Ok(serial_number)).unwrap();
+                }
+                Err(e) => {
+                    tx.send(Err(e)).unwrap();
+                }
+            }
+        }
+    });
+    UnboundedReceiverStream::new(rx)
+}
+
+// GetRobotVersion
+async fn get_robot_version_with_cursor(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<(i64, String), KachakaApiError> {
+    let request = tonic::Request::new(kachaka_api::GetRequest {
+        metadata: Some(kachaka_api::Metadata { cursor }),
+    });
+    let response = client.get_robot_version(request).await;
+    parse_getter_response(response)
+        .map(|response| (response.metadata.unwrap().cursor, response.version))
 }
 
 pub async fn get_robot_version(
     client: &mut TonicKachakaApiClient<Channel>,
     cursor: i64,
 ) -> Result<String, KachakaApiError> {
-    let request = tonic::Request::new(kachaka_api::GetRequest {
-        metadata: Some(kachaka_api::Metadata { cursor }),
-    });
-    let response = client.get_robot_version(request).await;
-    parse_getter_response(response).map(|response| response.version)
+    get_robot_version_with_cursor(client, cursor)
+        .await
+        .map(|(_, version)| version)
 }
 
-pub async fn get_robot_pose(
+pub async fn get_latest_robot_version(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<String, KachakaApiError> {
+    get_robot_version(client, 0).await
+}
+
+pub async fn watch_robot_version(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> impl Stream<Item = Result<String, KachakaApiError>> {
+    let (tx, rx) = mpsc::unbounded_channel::<Result<String, KachakaApiError>>();
+    let mut cursor = 0;
+    let mut client_clone = client.clone();
+    tokio::spawn(async move {
+        loop {
+            match get_robot_version_with_cursor(&mut client_clone, cursor).await {
+                Ok((new_cursor, version)) => {
+                    cursor = new_cursor;
+                    tx.send(Ok(version)).unwrap();
+                }
+                Err(e) => {
+                    tx.send(Err(e)).unwrap();
+                }
+            }
+        }
+    });
+    UnboundedReceiverStream::new(rx)
+}
+
+// GetRobotPose
+pub async fn get_robot_pose_with_cursor(
     client: &mut TonicKachakaApiClient<Channel>,
     cursor: i64,
-) -> Result<Pose, KachakaApiError> {
+) -> Result<(i64, Pose), KachakaApiError> {
     let request = tonic::Request::new(kachaka_api::GetRequest {
         metadata: Some(kachaka_api::Metadata { cursor }),
     });
     let response = client.get_robot_pose(request).await;
     let pose_result = parse_getter_response(response)?;
     if let Some(pose) = pose_result.pose {
-        Ok(pose.into())
+        Ok((pose_result.metadata.unwrap().cursor, pose.into()))
     } else {
         Err(KachakaApiError::NullResult)
     }
+}
+
+pub async fn get_robot_pose(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<Pose, KachakaApiError> {
+    get_robot_pose_with_cursor(client, cursor)
+        .await
+        .map(|(_, pose)| pose)
+}
+
+pub async fn get_latest_robot_pose(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<Pose, KachakaApiError> {
+    get_robot_pose(client, 0).await
+}
+
+pub async fn watch_robot_pose(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> impl Stream<Item = Result<Pose, KachakaApiError>> {
+    let (tx, rx) = mpsc::unbounded_channel::<Result<Pose, KachakaApiError>>();
+    let mut cursor = 0;
+    let mut client_clone = client.clone();
+    tokio::spawn(async move {
+        loop {
+            match get_robot_pose_with_cursor(&mut client_clone, cursor).await {
+                Ok((new_cursor, pose)) => {
+                    cursor = new_cursor;
+                    tx.send(Ok(pose)).unwrap();
+                }
+                Err(e) => {
+                    tx.send(Err(e)).unwrap();
+                }
+            }
+        }
+    });
+    UnboundedReceiverStream::new(rx)
+}
+
+// GetBatteryInfo
+pub async fn get_battery_info_with_cursor(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<(i64, BatteryInfo), KachakaApiError> {
+    let request = tonic::Request::new(kachaka_api::GetRequest {
+        metadata: Some(kachaka_api::Metadata { cursor }),
+    });
+    let response = client.get_battery_info(request).await;
+    parse_getter_response(response).map(|response| {
+        (
+            response.metadata.unwrap().cursor,
+            BatteryInfo {
+                power_supply_status: response.power_supply_status.into(),
+                remaining_percentage: response.remaining_percentage,
+            },
+        )
+    })
 }
 
 pub async fn get_battery_info(
     client: &mut TonicKachakaApiClient<Channel>,
     cursor: i64,
 ) -> Result<BatteryInfo, KachakaApiError> {
+    get_battery_info_with_cursor(client, cursor)
+        .await
+        .map(|(_, battery_info)| battery_info)
+}
+
+pub async fn get_latest_battery_info(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<BatteryInfo, KachakaApiError> {
+    get_battery_info(client, 0).await
+}
+
+pub async fn watch_battery_info(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> impl Stream<Item = Result<BatteryInfo, KachakaApiError>> {
+    let (tx, rx) = mpsc::unbounded_channel::<Result<BatteryInfo, KachakaApiError>>();
+    let mut cursor = 0;
+    let mut client_clone = client.clone();
+    tokio::spawn(async move {
+        loop {
+            match get_battery_info_with_cursor(&mut client_clone, cursor).await {
+                Ok((new_cursor, battery_info)) => {
+                    cursor = new_cursor;
+                    tx.send(Ok(battery_info)).unwrap();
+                }
+                Err(e) => {
+                    tx.send(Err(e)).unwrap();
+                }
+            }
+        }
+    });
+    UnboundedReceiverStream::new(rx)
+}
+
+// GetCommandState
+pub async fn get_command_state_with_cursor(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<(i64, CommandState), KachakaApiError> {
     let request = tonic::Request::new(kachaka_api::GetRequest {
         metadata: Some(kachaka_api::Metadata { cursor }),
     });
-    let response = client.get_battery_info(request).await;
-    parse_getter_response(response).map(|response| BatteryInfo {
-        power_supply_status: response.power_supply_status.into(),
-        remaining_percentage: response.remaining_percentage,
-    })
+    let response = client.get_command_state(request).await;
+    parse_getter_response(response)
+        .map(|response| (response.metadata.unwrap().cursor, response.into()))
 }
 
 pub async fn get_command_state(
     client: &mut TonicKachakaApiClient<Channel>,
     cursor: i64,
 ) -> Result<CommandState, KachakaApiError> {
-    let request = tonic::Request::new(kachaka_api::GetRequest {
-        metadata: Some(kachaka_api::Metadata { cursor }),
-    });
-    let response = client.get_command_state(request).await;
-    parse_getter_response(response).map(|response| response.into())
+    get_command_state_with_cursor(client, cursor)
+        .await
+        .map(|(_, command_state)| command_state)
 }
 
+pub async fn get_latest_command_state(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<CommandState, KachakaApiError> {
+    get_command_state(client, 0).await
+}
+
+pub async fn watch_command_state(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> impl Stream<Item = Result<CommandState, KachakaApiError>> {
+    let (tx, rx) = mpsc::unbounded_channel::<Result<CommandState, KachakaApiError>>();
+    let mut cursor = 0;
+    let mut client_clone = client.clone();
+    tokio::spawn(async move {
+        loop {
+            match get_command_state_with_cursor(&mut client_clone, cursor).await {
+                Ok((new_cursor, command_state)) => {
+                    cursor = new_cursor;
+                    tx.send(Ok(command_state)).unwrap();
+                }
+                Err(e) => {
+                    tx.send(Err(e)).unwrap();
+                }
+            }
+        }
+    });
+    UnboundedReceiverStream::new(rx)
+}
+
+// GetLastCommandResult
 async fn get_last_command_result_with_cursor(
     client: &mut TonicKachakaApiClient<Channel>,
     cursor: i64,
@@ -154,6 +354,7 @@ pub async fn watch_last_command_result(
 }
 
 // command api
+// StartCommand
 async fn start_command(
     client: &mut TonicKachakaApiClient<Channel>,
     command: kachaka_api::command::Command,
@@ -359,6 +560,7 @@ pub async fn dock_any_shelf_with_registration(
     .await
 }
 
+// CancelCommand
 pub async fn cancel_command(
     client: &mut TonicKachakaApiClient<Channel>,
 ) -> Result<(), KachakaApiError> {
@@ -371,6 +573,7 @@ pub async fn cancel_command(
     .map(|_response| ())
 }
 
+// Proceed
 pub async fn proceed(client: &mut TonicKachakaApiClient<Channel>) -> Result<(), KachakaApiError> {
     let request = tonic::Request::new(kachaka_api::EmptyRequest {});
     let response = client.proceed(request).await;
