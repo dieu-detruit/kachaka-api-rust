@@ -1,6 +1,6 @@
+use futures::stream::Stream;
 use kachaka_api::kachaka_api_client::KachakaApiClient as TonicKachakaApiClient;
 use tonic::transport::Channel;
-
 pub mod kachaka_api {
     tonic::include_proto!("kachaka_api");
 }
@@ -60,6 +60,12 @@ impl KachakaApiClient {
         cursor: i64,
     ) -> Result<Option<CommandResult>, KachakaApiError> {
         api_impl::get_last_command_result(&mut self.client, cursor).await
+    }
+
+    pub async fn watch_last_command_result(
+        &mut self,
+    ) -> impl Stream<Item = Result<Option<CommandResult>, KachakaApiError>> {
+        api_impl::watch_last_command_result(&mut self.client).await
     }
 
     // command api

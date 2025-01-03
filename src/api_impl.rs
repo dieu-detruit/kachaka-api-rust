@@ -1,7 +1,10 @@
 use crate::types::{BatteryInfo, CommandResult, CommandState, KachakaError, Pose};
 use crate::KachakaApiError;
 use crate::{kachaka_api, StartCommandOptions};
+use futures::stream::Stream;
 use kachaka_api::kachaka_api_client::KachakaApiClient as TonicKachakaApiClient;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::UnboundedReceiverStream;
 use tonic::transport::Channel;
 
 fn parse_rpc_response_with_result<T>(
@@ -118,6 +121,36 @@ pub async fn get_last_command_result(
     get_last_command_result_with_cursor(client, cursor)
         .await
         .map(|(_, result)| result)
+}
+
+pub async fn get_latest_last_command_result(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<Option<CommandResult>, KachakaApiError> {
+    get_last_command_result(client, 0).await
+}
+
+pub async fn watch_last_command_result(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> impl Stream<Item = Result<Option<CommandResult>, KachakaApiError>> {
+    let (tx, rx) = mpsc::unbounded_channel::<Result<Option<CommandResult>, KachakaApiError>>();
+
+    let mut cursor = 0;
+    let mut client_clone = client.clone();
+    tokio::spawn(async move {
+        loop {
+            match get_last_command_result_with_cursor(&mut client_clone, cursor).await {
+                Ok((new_cursor, result)) => {
+                    cursor = new_cursor;
+                    tx.send(Ok(result)).unwrap();
+                }
+                Err(e) => {
+                    tx.send(Err(e)).unwrap();
+                }
+            }
+        }
+    });
+
+    UnboundedReceiverStream::new(rx)
 }
 
 // command api
