@@ -5,11 +5,12 @@ pub mod kachaka_api {
     tonic::include_proto!("kachaka_api");
 }
 
+pub mod conversion;
 pub mod options;
 pub mod types;
 
 pub use options::StartCommandOptions;
-pub use types::{KachakaApiError, KachakaError};
+pub use types::{BatteryInfo, CommandResult, CommandState, KachakaApiError, KachakaError, Pose};
 
 #[derive(Clone)]
 pub struct KachakaApiClient {
@@ -17,10 +18,10 @@ pub struct KachakaApiClient {
 }
 
 fn parse_rpc_response_with_result<T>(
-    maybe_response: std::result::Result<tonic::Response<T>, tonic::Status>,
+    response_result: std::result::Result<tonic::Response<T>, tonic::Status>,
     get_result: impl Fn(&T) -> Option<kachaka_api::Result>,
 ) -> Result<T, KachakaApiError> {
-    match maybe_response {
+    match response_result {
         Ok(response) => {
             if let Some(result) = get_result(response.get_ref()) {
                 if result.success {
@@ -57,6 +58,7 @@ impl KachakaApiClient {
         Ok(Self { client })
     }
 
+    // getter api
     pub async fn get_robot_serial_number(
         &mut self,
         cursor: i64,
@@ -76,6 +78,53 @@ impl KachakaApiClient {
         parse_getter_response(response).map(|response| response.version)
     }
 
+    pub async fn get_robot_pose(&mut self, cursor: i64) -> Result<Pose, KachakaApiError> {
+        let request = tonic::Request::new(kachaka_api::GetRequest {
+            metadata: Some(kachaka_api::Metadata { cursor }),
+        });
+        let response = self.client.get_robot_pose(request).await;
+        let pose_result = parse_getter_response(response)?;
+        if let Some(pose) = pose_result.pose {
+            Ok(pose.into())
+        } else {
+            Err(KachakaApiError::NullResult)
+        }
+    }
+
+    pub async fn get_battery_info(&mut self, cursor: i64) -> Result<BatteryInfo, KachakaApiError> {
+        let request = tonic::Request::new(kachaka_api::GetRequest {
+            metadata: Some(kachaka_api::Metadata { cursor }),
+        });
+        let response = self.client.get_battery_info(request).await;
+        parse_getter_response(response).map(|response| BatteryInfo {
+            power_supply_status: response.power_supply_status.into(),
+            remaining_percentage: response.remaining_percentage,
+        })
+    }
+
+    pub async fn get_command_state(
+        &mut self,
+        cursor: i64,
+    ) -> Result<CommandState, KachakaApiError> {
+        let request = tonic::Request::new(kachaka_api::GetRequest {
+            metadata: Some(kachaka_api::Metadata { cursor }),
+        });
+        let response = self.client.get_command_state(request).await;
+        parse_getter_response(response).map(|response| response.into())
+    }
+
+    pub async fn get_last_command_result(
+        &mut self,
+        cursor: i64,
+    ) -> Result<Option<CommandResult>, KachakaApiError> {
+        let request = tonic::Request::new(kachaka_api::GetRequest {
+            metadata: Some(kachaka_api::Metadata { cursor }),
+        });
+        let response = self.client.get_last_command_result(request).await;
+        parse_getter_response(response).map(|response| response.into())
+    }
+
+    // command api
     async fn start_command(
         &mut self,
         command: kachaka_api::command::Command,
