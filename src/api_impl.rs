@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use crate::types::{BatteryInfo, CommandResult, CommandState, KachakaError, Pose};
 use crate::KachakaApiError;
 use crate::{kachaka_api, StartCommandOptions};
+
 use futures::stream::Stream;
 use kachaka_api::kachaka_api_client::KachakaApiClient as TonicKachakaApiClient;
 use tokio::sync::mpsc;
@@ -141,7 +144,7 @@ pub async fn watch_robot_version(
 }
 
 // GetRobotPose
-pub async fn get_robot_pose_with_cursor(
+async fn get_robot_pose_with_cursor(
     client: &mut TonicKachakaApiClient<Channel>,
     cursor: i64,
 ) -> Result<(i64, Pose), KachakaApiError> {
@@ -195,7 +198,7 @@ pub async fn watch_robot_pose(
 }
 
 // GetBatteryInfo
-pub async fn get_battery_info_with_cursor(
+async fn get_battery_info_with_cursor(
     client: &mut TonicKachakaApiClient<Channel>,
     cursor: i64,
 ) -> Result<(i64, BatteryInfo), KachakaApiError> {
@@ -251,8 +254,112 @@ pub async fn watch_battery_info(
     UnboundedReceiverStream::new(rx)
 }
 
+// GetRobotErrorCodeJson
+fn parse_robot_error_code_json(
+    response: kachaka_api::GetRobotErrorCodeJsonResponse,
+) -> Result<HashMap<i32, HashMap<String, String>>, KachakaApiError> {
+    let items: Vec<HashMap<String, serde_json::Value>> =
+        serde_json::from_str(&response.json).map_err(KachakaApiError::JsonParseError)?;
+    let mut result = HashMap::new();
+    for item in items {
+        let key = item.get("code").unwrap().as_i64().unwrap() as i32;
+        let mut map = HashMap::new();
+        for (k, v) in item {
+            if k == "code" {
+                continue;
+            }
+            map.insert(k, v.as_str().unwrap().to_string());
+        }
+        result.insert(key, map);
+    }
+    Ok(result)
+}
+
+pub async fn get_robot_error_code_json(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<HashMap<i32, HashMap<String, String>>, KachakaApiError> {
+    let request = tonic::Request::new(kachaka_api::EmptyRequest {});
+    let response = client.get_robot_error_code_json(request).await;
+    match response {
+        Ok(response) => {
+            if let Some(result) = response.get_ref().result {
+                if result.success {
+                    Ok(parse_robot_error_code_json(response.into_inner())?)
+                } else {
+                    Err(KachakaApiError::ApiError(KachakaError {
+                        error_code: result.error_code,
+                    }))
+                }
+            } else {
+                Err(KachakaApiError::NullResult)
+            }
+        }
+        Err(e) => Err(KachakaApiError::CommunicationError(e)),
+    }
+}
+
+// GetError
+async fn get_error_with_cursor(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<(i64, Vec<KachakaError>), KachakaApiError> {
+    let request = tonic::Request::new(kachaka_api::GetRequest {
+        metadata: Some(kachaka_api::Metadata { cursor }),
+    });
+    let response = client.get_error(request).await;
+    parse_getter_response(response).map(|response| {
+        (
+            response.metadata.unwrap().cursor,
+            response
+                .error_codes
+                .into_iter()
+                .map(|e| KachakaError { error_code: e })
+                .collect(),
+        )
+    })
+}
+
+pub async fn get_error(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<Vec<KachakaError>, KachakaApiError> {
+    get_error_with_cursor(client, cursor)
+        .await
+        .map(|(_, errors)| errors)
+}
+
+pub async fn get_latest_error(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<Vec<KachakaError>, KachakaApiError> {
+    get_error_with_cursor(client, 0)
+        .await
+        .map(|(_, errors)| errors)
+}
+
+pub async fn watch_error(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> impl Stream<Item = Result<Vec<KachakaError>, KachakaApiError>> {
+    let (tx, rx) = mpsc::unbounded_channel::<Result<Vec<KachakaError>, KachakaApiError>>();
+    let mut cursor = 0;
+    let mut client_clone = client.clone();
+    tokio::spawn(async move {
+        loop {
+            match get_error_with_cursor(&mut client_clone, cursor).await {
+                Ok((new_cursor, errors)) => {
+                    cursor = new_cursor;
+                    tx.send(Ok(errors)).unwrap();
+                }
+                Err(e) => {
+                    tx.send(Err(e)).unwrap();
+                }
+            }
+        }
+    });
+    UnboundedReceiverStream::new(rx)
+}
+
 // GetCommandState
-pub async fn get_command_state_with_cursor(
+async fn get_command_state_with_cursor(
     client: &mut TonicKachakaApiClient<Channel>,
     cursor: i64,
 ) -> Result<(i64, CommandState), KachakaApiError> {

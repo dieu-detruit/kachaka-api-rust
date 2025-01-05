@@ -10,6 +10,7 @@ pub enum KachakaApiError {
     CommunicationError(tonic::Status),
     ApiError(KachakaError),
     NullResult,
+    JsonParseError(serde_json::Error),
 }
 
 #[derive(Debug)]

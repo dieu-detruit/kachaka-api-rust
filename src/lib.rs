@@ -1,5 +1,6 @@
 use futures::stream::Stream;
 use kachaka_api::kachaka_api_client::KachakaApiClient as TonicKachakaApiClient;
+use std::collections::HashMap;
 use tonic::transport::Channel;
 pub mod kachaka_api {
     tonic::include_proto!("kachaka_api");
@@ -88,6 +89,28 @@ impl KachakaApiClient {
         &mut self,
     ) -> impl Stream<Item = Result<BatteryInfo, KachakaApiError>> {
         api_impl::watch_battery_info(&mut self.client).await
+    }
+
+    // GetRobotErrorCodeJson
+    pub async fn get_robot_error_code_json(
+        &mut self,
+    ) -> Result<HashMap<i32, HashMap<String, String>>, KachakaApiError> {
+        api_impl::get_robot_error_code_json(&mut self.client).await
+    }
+
+    // GetError
+    pub async fn get_error(&mut self, cursor: i64) -> Result<Vec<KachakaError>, KachakaApiError> {
+        api_impl::get_error(&mut self.client, cursor).await
+    }
+
+    pub async fn get_latest_error(&mut self) -> Result<Vec<KachakaError>, KachakaApiError> {
+        api_impl::get_latest_error(&mut self.client).await
+    }
+
+    pub async fn watch_error(
+        &mut self,
+    ) -> impl Stream<Item = Result<Vec<KachakaError>, KachakaApiError>> {
+        api_impl::watch_error(&mut self.client).await
     }
 
     // GetCommandState
