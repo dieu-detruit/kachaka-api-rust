@@ -309,6 +309,61 @@ pub async fn watch_front_camera_ros_image(
     UnboundedReceiverStream::new(rx)
 }
 
+// GetFrontCameraRosCompressedImage
+async fn get_front_camera_ros_compressed_image_with_cursor(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<(i64, DynamicImage), KachakaApiError> {
+    let request = tonic::Request::new(kachaka_api::GetRequest {
+        metadata: Some(kachaka_api::Metadata { cursor }),
+    });
+    let response = client.get_front_camera_ros_compressed_image(request).await;
+    parse_getter_response(response).map(|response| {
+        (
+            response.metadata.unwrap().cursor,
+            DynamicImage::from(response.image.unwrap()),
+        )
+    })
+}
+
+pub async fn get_front_camera_ros_compressed_image(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<DynamicImage, KachakaApiError> {
+    get_front_camera_ros_compressed_image_with_cursor(client, cursor)
+        .await
+        .map(|(_, image)| image)
+}
+
+pub async fn get_latest_front_camera_ros_compressed_image(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<DynamicImage, KachakaApiError> {
+    get_front_camera_ros_compressed_image(client, 0).await
+}
+
+pub async fn watch_front_camera_ros_compressed_image(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> impl Stream<Item = Result<DynamicImage, KachakaApiError>> {
+    let (tx, rx) = mpsc::unbounded_channel::<Result<DynamicImage, KachakaApiError>>();
+    let mut cursor = 0;
+    let mut client_clone = client.clone();
+    tokio::spawn(async move {
+        loop {
+            match get_front_camera_ros_compressed_image_with_cursor(&mut client_clone, cursor).await
+            {
+                Ok((new_cursor, image)) => {
+                    cursor = new_cursor;
+                    tx.send(Ok(image)).unwrap();
+                }
+                Err(e) => {
+                    tx.send(Err(e)).unwrap();
+                }
+            }
+        }
+    });
+    UnboundedReceiverStream::new(rx)
+}
+
 // GetBackCameraRosImage
 async fn get_back_camera_ros_image_with_cursor(
     client: &mut TonicKachakaApiClient<Channel>,
@@ -350,6 +405,61 @@ pub async fn watch_back_camera_ros_image(
     tokio::spawn(async move {
         loop {
             match get_back_camera_ros_image_with_cursor(&mut client_clone, cursor).await {
+                Ok((new_cursor, image)) => {
+                    cursor = new_cursor;
+                    tx.send(Ok(image)).unwrap();
+                }
+                Err(e) => {
+                    tx.send(Err(e)).unwrap();
+                }
+            }
+        }
+    });
+    UnboundedReceiverStream::new(rx)
+}
+
+// GetBackCameraRosCompressedImage
+async fn get_back_camera_ros_compressed_image_with_cursor(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<(i64, DynamicImage), KachakaApiError> {
+    let request = tonic::Request::new(kachaka_api::GetRequest {
+        metadata: Some(kachaka_api::Metadata { cursor }),
+    });
+    let response = client.get_back_camera_ros_compressed_image(request).await;
+    parse_getter_response(response).map(|response| {
+        (
+            response.metadata.unwrap().cursor,
+            DynamicImage::from(response.image.unwrap()),
+        )
+    })
+}
+
+pub async fn get_back_camera_ros_compressed_image(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<DynamicImage, KachakaApiError> {
+    get_back_camera_ros_compressed_image_with_cursor(client, cursor)
+        .await
+        .map(|(_, image)| image)
+}
+
+pub async fn get_latest_back_camera_ros_compressed_image(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<DynamicImage, KachakaApiError> {
+    get_back_camera_ros_compressed_image(client, 0).await
+}
+
+pub async fn watch_back_camera_ros_compressed_image(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> impl Stream<Item = Result<DynamicImage, KachakaApiError>> {
+    let (tx, rx) = mpsc::unbounded_channel::<Result<DynamicImage, KachakaApiError>>();
+    let mut cursor = 0;
+    let mut client_clone = client.clone();
+    tokio::spawn(async move {
+        loop {
+            match get_back_camera_ros_compressed_image_with_cursor(&mut client_clone, cursor).await
+            {
                 Ok((new_cursor, image)) => {
                     cursor = new_cursor;
                     tx.send(Ok(image)).unwrap();

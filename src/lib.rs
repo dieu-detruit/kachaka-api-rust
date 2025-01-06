@@ -112,6 +112,26 @@ impl KachakaApiClient {
         api_impl::watch_front_camera_ros_image(&mut self.client).await
     }
 
+    // GetFrontCameraRosCompressedImage
+    pub async fn get_front_camera_ros_compressed_image(
+        &mut self,
+        cursor: i64,
+    ) -> Result<DynamicImage, KachakaApiError> {
+        api_impl::get_front_camera_ros_compressed_image(&mut self.client, cursor).await
+    }
+
+    pub async fn get_latest_front_camera_ros_compressed_image(
+        &mut self,
+    ) -> Result<DynamicImage, KachakaApiError> {
+        api_impl::get_latest_front_camera_ros_compressed_image(&mut self.client).await
+    }
+
+    pub async fn watch_front_camera_ros_compressed_image(
+        &mut self,
+    ) -> impl Stream<Item = Result<DynamicImage, KachakaApiError>> {
+        api_impl::watch_front_camera_ros_compressed_image(&mut self.client).await
+    }
+
     // GetBackCameraRosImage
     pub async fn get_back_camera_ros_image(
         &mut self,
@@ -130,6 +150,26 @@ impl KachakaApiClient {
         &mut self,
     ) -> impl Stream<Item = Result<DynamicImage, KachakaApiError>> {
         api_impl::watch_back_camera_ros_image(&mut self.client).await
+    }
+
+    // GetBackCameraRosCompressedImage
+    pub async fn get_back_camera_ros_compressed_image(
+        &mut self,
+        cursor: i64,
+    ) -> Result<DynamicImage, KachakaApiError> {
+        api_impl::get_back_camera_ros_compressed_image(&mut self.client, cursor).await
+    }
+
+    pub async fn get_latest_back_camera_ros_compressed_image(
+        &mut self,
+    ) -> Result<DynamicImage, KachakaApiError> {
+        api_impl::get_latest_back_camera_ros_compressed_image(&mut self.client).await
+    }
+
+    pub async fn watch_back_camera_ros_compressed_image(
+        &mut self,
+    ) -> impl Stream<Item = Result<DynamicImage, KachakaApiError>> {
+        api_impl::watch_back_camera_ros_compressed_image(&mut self.client).await
     }
 
     // GetRobotErrorCodeJson

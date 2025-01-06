@@ -68,6 +68,12 @@ impl From<kachaka_api::RosImage> for DynamicImage {
     }
 }
 
+impl From<kachaka_api::RosCompressedImage> for DynamicImage {
+    fn from(image: kachaka_api::RosCompressedImage) -> Self {
+        image::load_from_memory(&image.data).expect("Failed to decode compressed image")
+    }
+}
+
 impl From<kachaka_api::GetCommandStateResponse> for CommandState {
     fn from(get_command_state_response: kachaka_api::GetCommandStateResponse) -> Self {
         match kachaka_api::CommandState::try_from(get_command_state_response.state).unwrap() {
