@@ -1,4 +1,5 @@
 use futures::stream::Stream;
+use image::DynamicImage;
 use kachaka_api::kachaka_api_client::KachakaApiClient as TonicKachakaApiClient;
 use std::collections::HashMap;
 use tonic::transport::Channel;
@@ -89,6 +90,46 @@ impl KachakaApiClient {
         &mut self,
     ) -> impl Stream<Item = Result<BatteryInfo, KachakaApiError>> {
         api_impl::watch_battery_info(&mut self.client).await
+    }
+
+    // GetFrontCameraRosImage
+    pub async fn get_front_camera_ros_image(
+        &mut self,
+        cursor: i64,
+    ) -> Result<DynamicImage, KachakaApiError> {
+        api_impl::get_front_camera_ros_image(&mut self.client, cursor).await
+    }
+
+    pub async fn get_latest_front_camera_ros_image(
+        &mut self,
+    ) -> Result<DynamicImage, KachakaApiError> {
+        api_impl::get_latest_front_camera_ros_image(&mut self.client).await
+    }
+
+    pub async fn watch_front_camera_ros_image(
+        &mut self,
+    ) -> impl Stream<Item = Result<DynamicImage, KachakaApiError>> {
+        api_impl::watch_front_camera_ros_image(&mut self.client).await
+    }
+
+    // GetBackCameraRosImage
+    pub async fn get_back_camera_ros_image(
+        &mut self,
+        cursor: i64,
+    ) -> Result<DynamicImage, KachakaApiError> {
+        api_impl::get_back_camera_ros_image(&mut self.client, cursor).await
+    }
+
+    pub async fn get_latest_back_camera_ros_image(
+        &mut self,
+    ) -> Result<DynamicImage, KachakaApiError> {
+        api_impl::get_latest_back_camera_ros_image(&mut self.client).await
+    }
+
+    pub async fn watch_back_camera_ros_image(
+        &mut self,
+    ) -> impl Stream<Item = Result<DynamicImage, KachakaApiError>> {
+        api_impl::watch_back_camera_ros_image(&mut self.client).await
     }
 
     // GetRobotErrorCodeJson

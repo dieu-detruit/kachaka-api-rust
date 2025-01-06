@@ -1,6 +1,6 @@
 use crate::kachaka_api;
 use crate::types::{CommandResult, CommandState, KachakaError, Pose, PowerSupplyStatus};
-
+use image::DynamicImage;
 impl From<kachaka_api::Result> for std::result::Result<(), KachakaError> {
     fn from(result: kachaka_api::Result) -> Self {
         if result.success {
@@ -38,6 +38,33 @@ impl From<i32> for PowerSupplyStatus {
         kachaka_api::PowerSupplyStatus::try_from(status)
             .unwrap()
             .into()
+    }
+}
+
+impl From<kachaka_api::RosImage> for DynamicImage {
+    fn from(image: kachaka_api::RosImage) -> Self {
+        match image.encoding.as_str() {
+            "rgb8" => {
+                let img_buffer = image::RgbImage::from_raw(image.width, image.height, image.data)
+                    .expect("Failed to create image buffer");
+                DynamicImage::ImageRgb8(img_buffer)
+            }
+            "rgba8" => {
+                let img_buffer = image::RgbaImage::from_raw(image.width, image.height, image.data)
+                    .expect("Failed to create image buffer");
+                DynamicImage::ImageRgba8(img_buffer)
+            }
+            "bgr8" => {
+                let mut rgb_data = image.data.clone();
+                for pixel in rgb_data.chunks_mut(3) {
+                    pixel.swap(0, 2);
+                }
+                let img_buffer = image::RgbImage::from_raw(image.width, image.height, rgb_data)
+                    .expect("Failed to create image buffer");
+                DynamicImage::ImageRgb8(img_buffer)
+            }
+            _ => panic!("Unsupported image encoding: {}", image.encoding),
+        }
     }
 }
 
