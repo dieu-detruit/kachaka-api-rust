@@ -908,3 +908,174 @@ pub async fn proceed(client: &mut TonicKachakaApiClient<Channel>) -> Result<(), 
     })
     .map(|_response| ())
 }
+
+// GetLocations
+async fn get_locations_with_cursor(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<(i64, Vec<kachaka_api::Location>), KachakaApiError> {
+    let request = tonic::Request::new(kachaka_api::GetRequest {
+        metadata: Some(kachaka_api::Metadata { cursor }),
+    });
+    let response = client.get_locations(request).await;
+    parse_getter_response(response)
+        .map(|response| (response.metadata.unwrap().cursor, response.locations))
+}
+
+pub async fn get_locations(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<Vec<kachaka_api::Location>, KachakaApiError> {
+    get_locations_with_cursor(client, cursor)
+        .await
+        .map(|(_, locations)| locations)
+}
+
+pub async fn get_latest_locations(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<Vec<kachaka_api::Location>, KachakaApiError> {
+    get_locations(client, 0).await
+}
+
+pub async fn watch_locations(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> impl Stream<Item = Result<Vec<kachaka_api::Location>, KachakaApiError>> {
+    let (tx, rx) = mpsc::unbounded_channel::<Result<Vec<kachaka_api::Location>, KachakaApiError>>();
+    let mut cursor = 0;
+    let mut client_clone = client.clone();
+    tokio::spawn(async move {
+        loop {
+            match get_locations_with_cursor(&mut client_clone, cursor).await {
+                Ok((new_cursor, locations)) => {
+                    cursor = new_cursor;
+                    tx.send(Ok(locations)).unwrap();
+                }
+                Err(e) => {
+                    tx.send(Err(e)).unwrap();
+                }
+            }
+        }
+    });
+
+    UnboundedReceiverStream::new(rx)
+}
+
+// GetShelves
+async fn get_shelves_with_cursor(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<(i64, Vec<kachaka_api::Shelf>), KachakaApiError> {
+    let request = tonic::Request::new(kachaka_api::GetRequest {
+        metadata: Some(kachaka_api::Metadata { cursor }),
+    });
+    let response = client.get_shelves(request).await;
+    parse_getter_response(response)
+        .map(|response| (response.metadata.unwrap().cursor, response.shelves))
+}
+
+pub async fn get_shelves(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<Vec<kachaka_api::Shelf>, KachakaApiError> {
+    get_shelves_with_cursor(client, cursor)
+        .await
+        .map(|(_, shelves)| shelves)
+}
+
+pub async fn get_latest_shelves(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<Vec<kachaka_api::Shelf>, KachakaApiError> {
+    get_shelves(client, 0).await
+}
+
+pub async fn watch_shelves(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> impl Stream<Item = Result<Vec<kachaka_api::Shelf>, KachakaApiError>> {
+    let (tx, rx) = mpsc::unbounded_channel::<Result<Vec<kachaka_api::Shelf>, KachakaApiError>>();
+    let mut cursor = 0;
+    let mut client_clone = client.clone();
+
+    tokio::spawn(async move {
+        loop {
+            match get_shelves_with_cursor(&mut client_clone, cursor).await {
+                Ok((new_cursor, shelves)) => {
+                    cursor = new_cursor;
+                    tx.send(Ok(shelves)).unwrap();
+                }
+                Err(e) => {
+                    tx.send(Err(e)).unwrap();
+                }
+            }
+        }
+    });
+
+    UnboundedReceiverStream::new(rx)
+}
+
+// GetMovingShelfId
+async fn get_moving_shelf_id_with_cursor(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<(i64, String), KachakaApiError> {
+    let request = tonic::Request::new(kachaka_api::GetRequest {
+        metadata: Some(kachaka_api::Metadata { cursor }),
+    });
+    let response = client.get_moving_shelf_id(request).await;
+    parse_getter_response(response)
+        .map(|response| (response.metadata.unwrap().cursor, response.shelf_id))
+}
+
+pub async fn get_moving_shelf_id(
+    client: &mut TonicKachakaApiClient<Channel>,
+    cursor: i64,
+) -> Result<String, KachakaApiError> {
+    get_moving_shelf_id_with_cursor(client, cursor)
+        .await
+        .map(|(_, shelf_id)| shelf_id)
+}
+
+pub async fn get_latest_moving_shelf_id(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> Result<String, KachakaApiError> {
+    get_moving_shelf_id(client, 0).await
+}
+
+pub async fn watch_moving_shelf_id(
+    client: &mut TonicKachakaApiClient<Channel>,
+) -> impl Stream<Item = Result<String, KachakaApiError>> {
+    let (tx, rx) = mpsc::unbounded_channel::<Result<String, KachakaApiError>>();
+    let mut cursor = 0;
+    let mut client_clone = client.clone();
+
+    tokio::spawn(async move {
+        loop {
+            match get_moving_shelf_id_with_cursor(&mut client_clone, cursor).await {
+                Ok((new_cursor, shelf_id)) => {
+                    cursor = new_cursor;
+                    tx.send(Ok(shelf_id)).unwrap();
+                }
+                Err(e) => {
+                    tx.send(Err(e)).unwrap();
+                }
+            }
+        }
+    });
+
+    UnboundedReceiverStream::new(rx)
+}
+
+// ResetShelfPose
+pub async fn reset_shelf_pose(
+    client: &mut TonicKachakaApiClient<Channel>,
+    shelf_id: &str,
+) -> Result<(), KachakaApiError> {
+    let request = tonic::Request::new(kachaka_api::ResetShelfPoseRequest {
+        shelf_id: shelf_id.to_string(),
+    });
+    let response = client.reset_shelf_pose(request).await;
+    parse_rpc_response_with_result(
+        response,
+        |rpc_response: &kachaka_api::ResetShelfPoseResponse| rpc_response.result,
+    )
+    .map(|_response| ())
+}

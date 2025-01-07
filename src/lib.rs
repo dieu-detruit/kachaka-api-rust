@@ -10,6 +10,7 @@ pub mod kachaka_api {
 pub mod api_impl;
 pub mod conversion;
 pub mod options;
+pub mod shelf_location_resolver;
 pub mod types;
 
 pub use options::StartCommandOptions;
@@ -330,5 +331,65 @@ impl KachakaApiClient {
 
     pub async fn proceed(&mut self) -> Result<(), KachakaApiError> {
         api_impl::proceed(&mut self.client).await
+    }
+
+    // locations
+    // GetLocations
+    pub async fn get_locations(
+        &mut self,
+        cursor: i64,
+    ) -> Result<Vec<kachaka_api::Location>, KachakaApiError> {
+        api_impl::get_locations(&mut self.client, cursor).await
+    }
+
+    pub async fn get_latest_locations(
+        &mut self,
+    ) -> Result<Vec<kachaka_api::Location>, KachakaApiError> {
+        api_impl::get_latest_locations(&mut self.client).await
+    }
+
+    pub async fn watch_locations(
+        &mut self,
+    ) -> impl Stream<Item = Result<Vec<kachaka_api::Location>, KachakaApiError>> {
+        api_impl::watch_locations(&mut self.client).await
+    }
+
+    // shelves
+    // GetShelves
+    pub async fn get_shelves(
+        &mut self,
+        cursor: i64,
+    ) -> Result<Vec<kachaka_api::Shelf>, KachakaApiError> {
+        api_impl::get_shelves(&mut self.client, cursor).await
+    }
+
+    pub async fn get_latest_shelves(&mut self) -> Result<Vec<kachaka_api::Shelf>, KachakaApiError> {
+        api_impl::get_latest_shelves(&mut self.client).await
+    }
+
+    pub async fn watch_shelves(
+        &mut self,
+    ) -> impl Stream<Item = Result<Vec<kachaka_api::Shelf>, KachakaApiError>> {
+        api_impl::watch_shelves(&mut self.client).await
+    }
+
+    // GetMovingShelfId
+    pub async fn get_moving_shelf_id(&mut self, cursor: i64) -> Result<String, KachakaApiError> {
+        api_impl::get_moving_shelf_id(&mut self.client, cursor).await
+    }
+
+    pub async fn get_latest_moving_shelf_id(&mut self) -> Result<String, KachakaApiError> {
+        api_impl::get_latest_moving_shelf_id(&mut self.client).await
+    }
+
+    pub async fn watch_moving_shelf_id(
+        &mut self,
+    ) -> impl Stream<Item = Result<String, KachakaApiError>> {
+        api_impl::watch_moving_shelf_id(&mut self.client).await
+    }
+
+    // ResetShelfPose
+    pub async fn reset_shelf_pose(&mut self, shelf_id: &str) -> Result<(), KachakaApiError> {
+        api_impl::reset_shelf_pose(&mut self.client, shelf_id).await
     }
 }
